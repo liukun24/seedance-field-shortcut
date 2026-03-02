@@ -1,8 +1,8 @@
 {
     "authorizations": [
         {
-            "username": "123",
-            "password": "123"
+            "id": "ark_auth",
+            "value": "e730848e-ad16-4857-8b4c-e490a8fea310"
         }
     ]
 }
