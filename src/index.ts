@@ -1,4 +1,4 @@
-import { basekit, FieldType, field, FieldComponent, FieldCode, AuthorizationType } from '@lark-opdev/block-basekit-server-api';
+import { basekit, FieldType, field, FieldComponent, FieldCode } from '@lark-opdev/block-basekit-server-api';
 const { t } = field;
 
 // 域名白名单 - 火山引擎方舟API + 飞书附件
@@ -8,6 +8,8 @@ basekit.addField({
   i18n: {
     messages: {
       'zh-CN': {
+        'apiKey': 'API Key',
+        'apiKeyPlaceholder': '火山引擎方舟 API Key',
         'endpointId': '模型端点 ID',
         'endpointIdPlaceholder': '如 ep-xxxxxxxxxxxx-xxxxx',
         'prompt': '视频提示词',
@@ -26,6 +28,8 @@ basekit.addField({
         'taskId': '任务ID',
       },
       'en-US': {
+        'apiKey': 'API Key',
+        'apiKeyPlaceholder': 'Volcengine Ark API Key',
         'endpointId': 'Model Endpoint ID',
         'endpointIdPlaceholder': 'e.g. ep-xxxxxxxxxxxx-xxxxx',
         'prompt': 'Video Prompt',
@@ -44,6 +48,8 @@ basekit.addField({
         'taskId': 'Task ID',
       },
       'ja-JP': {
+        'apiKey': 'API Key',
+        'apiKeyPlaceholder': '火山エンジンArk API Key',
         'endpointId': 'モデルエンドポイントID',
         'endpointIdPlaceholder': '例: ep-xxxxxxxxxxxx-xxxxx',
         'prompt': '動画プロンプト',
@@ -64,21 +70,16 @@ basekit.addField({
     }
   },
 
-  // 火山引擎方舟 API Key 授权
-  authorizations: [
-    {
-      id: 'ark_auth',
-      platform: 'volcengine',
-      type: AuthorizationType.HeaderBearerToken,
-      required: true,
-      instructionsUrl: 'https://console.volcengine.com/ark',
-      label: '火山引擎方舟 API Key',
-      icon: { light: '', dark: '' }
-    }
-  ],
-
   // 定义捷径的入参
   formItems: [
+    {
+      key: 'apiKey',
+      label: t('apiKey'),
+      component: FieldComponent.Input,
+      props: { placeholder: t('apiKeyPlaceholder') },
+      tooltips: [{ type: 'text', content: '在火山引擎方舟控制台获取：https://console.volcengine.com/ark' }],
+      validator: { required: true }
+    },
     {
       key: 'endpointId',
       label: t('endpointId'),
@@ -202,6 +203,7 @@ basekit.addField({
 
   // 执行函数
   execute: async (formItemParams: {
+    apiKey: string;
     endpointId: string;
     prompt: { type: string; text: string }[];
     firstFrameUrl: string;
@@ -211,7 +213,7 @@ basekit.addField({
     duration: { label: string; value: string };
     generateAudio: { label: string; value: string };
   }, context) => {
-    const { endpointId, prompt, firstFrameUrl, lastFrameUrl, firstFrameAttach, ratio, duration, generateAudio } = formItemParams;
+    const { apiKey, endpointId, prompt, firstFrameUrl, lastFrameUrl, firstFrameAttach, ratio, duration, generateAudio } = formItemParams;
 
     function debugLog(arg: any, showContext = false) {
       if (!showContext) {
@@ -304,10 +306,12 @@ basekit.addField({
 
     debugLog({ '===请求体': { ...requestBody, content: `[${content.length} items]` } });
 
-    // fetch 封装
-    const fetchApi = async <T = any>(url: string, init: any, authId?: string): Promise<T> => {
+    // fetch 封装（手动添加 Authorization header）
+    const authHeader = `Bearer ${apiKey?.trim()}`;
+    const fetchApi = async <T = any>(url: string, init: any): Promise<T> => {
       try {
-        const res = await context.fetch(url, init, authId);
+        init.headers = { ...init.headers, 'Authorization': authHeader };
+        const res = await context.fetch(url, init);
         const resText = await res.text();
         debugLog({ [`===fetch ${url}`]: { status: res.status, resText: resText.slice(0, 4000) } });
         return JSON.parse(resText);
@@ -326,7 +330,6 @@ basekit.addField({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody),
         },
-        'ark_auth'
       );
 
       if (!createResult?.id) {
@@ -355,8 +358,7 @@ basekit.addField({
         const getResult = await fetchApi<any>(
           `https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks/${taskId}`,
           { method: 'GET' },
-          'ark_auth'
-        );
+          );
 
         const status = getResult?.status;
         debugLog({ [`===轮询#${attempts}`]: status });
