@@ -1,48 +1,56 @@
 import { basekit, FieldType, field, FieldComponent, FieldCode, AuthorizationType } from '@lark-opdev/block-basekit-server-api';
 const { t } = field;
 
-// 域名白名单 - 火山引擎方舟API
-basekit.addDomainList(['volces.com']);
+// 域名白名单 - 火山引擎方舟API + 飞书附件
+basekit.addDomainList(['volces.com', 'feishu.cn', 'feishucdn.com']);
 
 basekit.addField({
-  // 定义捷径的i18n语言资源
   i18n: {
     messages: {
       'zh-CN': {
         'prompt': '视频提示词',
-        'promptTooltip': '选择包含视频描述文案的文本字段',
-        'refImage': '参考图片（可选）',
-        'refImageTooltip': '选择首帧参考图，不选则为纯文生视频',
+        'firstFrameUrl': '首帧图片URL（可选）',
+        'firstFrameUrlPlaceholder': '公开图片URL，如 https://example.com/first.png',
+        'lastFrameUrl': '尾帧图片URL（可选）',
+        'lastFrameUrlPlaceholder': '公开图片URL，如 https://example.com/last.png',
+        'firstFrameAttach': '首帧图片附件（可选）',
         'duration': '视频时长',
-        'cameraFixed': '固定镜头',
-        'yes': '是（镜头不动）',
-        'no': '否（镜头跟随运动）',
+        'ratio': '画面比例',
+        'generateAudio': '生成音频',
+        'yes': '是',
+        'no': '否',
         'videoUrl': '视频地址',
         'status': '生成状态',
         'taskId': '任务ID',
       },
       'en-US': {
         'prompt': 'Video Prompt',
-        'promptTooltip': 'Select text field containing video description',
-        'refImage': 'Reference Image (Optional)',
-        'refImageTooltip': 'Select first-frame reference image, leave empty for text-to-video',
+        'firstFrameUrl': 'First Frame URL (Optional)',
+        'firstFrameUrlPlaceholder': 'Public image URL, e.g. https://example.com/first.png',
+        'lastFrameUrl': 'Last Frame URL (Optional)',
+        'lastFrameUrlPlaceholder': 'Public image URL, e.g. https://example.com/last.png',
+        'firstFrameAttach': 'First Frame Attachment (Optional)',
         'duration': 'Duration',
-        'cameraFixed': 'Fixed Camera',
-        'yes': 'Yes (static camera)',
-        'no': 'No (camera follows motion)',
+        'ratio': 'Aspect Ratio',
+        'generateAudio': 'Generate Audio',
+        'yes': 'Yes',
+        'no': 'No',
         'videoUrl': 'Video URL',
         'status': 'Status',
         'taskId': 'Task ID',
       },
       'ja-JP': {
         'prompt': '動画プロンプト',
-        'promptTooltip': '動画説明を含むテキストフィールドを選択',
-        'refImage': '参考画像（任意）',
-        'refImageTooltip': '最初のフレーム参考画像を選択',
+        'firstFrameUrl': '最初フレームURL（任意）',
+        'firstFrameUrlPlaceholder': '公開画像URL',
+        'lastFrameUrl': '最後フレームURL（任意）',
+        'lastFrameUrlPlaceholder': '公開画像URL',
+        'firstFrameAttach': '最初フレーム添付（任意）',
         'duration': '動画の長さ',
-        'cameraFixed': 'カメラ固定',
-        'yes': 'はい（カメラ固定）',
-        'no': 'いいえ（カメラ追従）',
+        'ratio': 'アスペクト比',
+        'generateAudio': 'オーディオ生成',
+        'yes': 'はい',
+        'no': 'いいえ',
         'videoUrl': '動画URL',
         'status': 'ステータス',
         'taskId': 'タスクID',
@@ -59,10 +67,7 @@ basekit.addField({
       required: true,
       instructionsUrl: 'https://console.volcengine.com/ark',
       label: '火山引擎方舟 API Key',
-      icon: {
-        light: '',
-        dark: '',
-      }
+      icon: { light: '', dark: '' }
     }
   ],
 
@@ -75,32 +80,47 @@ basekit.addField({
       props: {
         supportType: [FieldType.Text],
       },
-      tooltips: [
-        {
-          type: 'text',
-          content: '选择包含视频描述文案的文本字段，如"无人机穿越峡谷"',
-        }
-      ],
-      validator: {
-        required: true,
-      }
+      tooltips: [{ type: 'text', content: '文生视频必填；图生视频可选' }],
+      validator: { required: false }
     },
     {
-      key: 'refImage',
-      label: t('refImage'),
+      key: 'firstFrameUrl',
+      label: t('firstFrameUrl'),
+      component: FieldComponent.Input,
+      props: { placeholder: t('firstFrameUrlPlaceholder') },
+      tooltips: [{ type: 'text', content: '可选：输入首帧图片的公开URL（PNG/JPG/WEBP），实现图生视频' }],
+      validator: { required: false }
+    },
+    {
+      key: 'lastFrameUrl',
+      label: t('lastFrameUrl'),
+      component: FieldComponent.Input,
+      props: { placeholder: t('lastFrameUrlPlaceholder') },
+      tooltips: [{ type: 'text', content: '可选：输入尾帧图片的公开URL，与首帧配合实现首尾帧控制' }],
+      validator: { required: false }
+    },
+    {
+      key: 'firstFrameAttach',
+      label: t('firstFrameAttach'),
       component: FieldComponent.FieldSelect,
+      props: { supportType: [FieldType.Attachment] },
+      tooltips: [{ type: 'text', content: '可选：从附件字段选取首帧图片（优先使用上方URL）' }],
+      validator: { required: false }
+    },
+    {
+      key: 'ratio',
+      label: t('ratio'),
+      component: FieldComponent.SingleSelect,
       props: {
-        supportType: [FieldType.Attachment],
+        options: [
+          { label: '16:9 横屏', value: '16:9' },
+          { label: '9:16 竖屏', value: '9:16' },
+          { label: '1:1 方形', value: '1:1' },
+          { label: '21:9 超宽', value: '21:9' },
+          { label: '自适应（图生视频）', value: 'adaptive' },
+        ]
       },
-      tooltips: [
-        {
-          type: 'text',
-          content: '可选：选择首帧参考图片的附件字段，实现图生视频。不选则为纯文生视频。',
-        }
-      ],
-      validator: {
-        required: false,
-      }
+      validator: { required: true }
     },
     {
       key: 'duration',
@@ -112,24 +132,22 @@ basekit.addField({
           { label: '10秒', value: '10' },
         ]
       },
-      validator: {
-        required: true,
-      }
+      validator: { required: true }
     },
     {
-      key: 'cameraFixed',
-      label: t('cameraFixed'),
+      key: 'generateAudio',
+      label: t('generateAudio'),
       component: FieldComponent.Radio,
       props: {
         options: [
-          { label: t('no'), value: 'false' },
           { label: t('yes'), value: 'true' },
+          { label: t('no'), value: 'false' },
         ]
       },
     },
   ],
 
-  // 定义捷径的返回结果类型
+  // 返回结果类型
   resultType: {
     type: FieldType.Object,
     extra: {
@@ -168,16 +186,18 @@ basekit.addField({
     },
   },
 
-  // 捷径执行函数
+  // 执行函数
   execute: async (formItemParams: {
     prompt: { type: string; text: string }[];
-    refImage: { name: string; size: number; type: string; tmp_url: string }[];
+    firstFrameUrl: string;
+    lastFrameUrl: string;
+    firstFrameAttach: { name: string; size: number; type: string; tmp_url: string }[];
+    ratio: { label: string; value: string };
     duration: { label: string; value: string };
-    cameraFixed: { label: string; value: string };
+    generateAudio: { label: string; value: string };
   }, context) => {
-    const { prompt, refImage, duration, cameraFixed } = formItemParams;
+    const { prompt, firstFrameUrl, lastFrameUrl, firstFrameAttach, ratio, duration, generateAudio } = formItemParams;
 
-    // 日志工具函数
     function debugLog(arg: any, showContext = false) {
       if (!showContext) {
         console.log(JSON.stringify({ arg, logID: context.logID }), '\n');
@@ -186,9 +206,9 @@ basekit.addField({
       console.log(JSON.stringify({ formItemParams, context, arg }), '\n');
     }
 
-    debugLog('=====Seedance 1.5 Pro start=====v1', true);
+    debugLog('=====Seedance 1.5 Pro start=====v2', true);
 
-    // 从文本字段提取提示词
+    // 提取提示词
     let promptText = '';
     if (Array.isArray(prompt)) {
       promptText = prompt.map((item: any) => item.text || '').join('');
@@ -196,53 +216,85 @@ basekit.addField({
       promptText = prompt;
     }
 
-    if (!promptText || !promptText.trim()) {
-      debugLog({ '===提示词为空': formItemParams });
-      return {
-        code: FieldCode.ConfigError,
-        msg: '===提示词为空',
-      };
+    // 判断是否有图片输入（首帧URL、尾帧URL、首帧附件任一有值）
+    const hasFirstFrameUrl = firstFrameUrl && typeof firstFrameUrl === 'string' && firstFrameUrl.trim().startsWith('http');
+    const hasLastFrameUrl = lastFrameUrl && typeof lastFrameUrl === 'string' && lastFrameUrl.trim().startsWith('http');
+    const hasFirstFrameAttach = firstFrameAttach && Array.isArray(firstFrameAttach) && firstFrameAttach.length > 0;
+    const hasAnyImage = hasFirstFrameUrl || hasLastFrameUrl || hasFirstFrameAttach;
+
+    // 文生视频模式下提示词必填；图生视频模式下提示词可选
+    if (!promptText?.trim() && !hasAnyImage) {
+      return { code: FieldCode.ConfigError, msg: '===提示词和图片至少需要提供一项' };
     }
 
-    // 构建完整提示词（附加生成参数）
-    const durationValue = duration?.value || '5';
-    const cameraFixedValue = cameraFixed?.value || 'false';
-    const fullPrompt = `${promptText.trim()}  --duration ${durationValue} --camerafixed ${cameraFixedValue} --watermark true`;
+    // ========== 构建 content 数组 ==========
+    const content: any[] = [];
 
-    // 构建 API 请求的 content 数组
-    const content: any[] = [
-      {
-        type: 'text',
-        text: fullPrompt,
-      }
-    ];
+    // 提示词（可选）
+    if (promptText?.trim()) {
+      content.push({ type: 'text', text: promptText.trim() });
+    }
 
-    // 如果提供了参考图片，添加到 content（图生视频模式）
-    if (refImage && Array.isArray(refImage) && refImage.length > 0) {
-      const firstImage = refImage[0];
-      if (firstImage?.tmp_url) {
-        content.push({
-          type: 'image_url',
-          image_url: {
-            url: firstImage.tmp_url,
-          }
-        });
+    // 首帧图片：优先URL输入，其次附件字段
+    let firstFrameSrc = '';
+    if (firstFrameUrl && typeof firstFrameUrl === 'string' && firstFrameUrl.trim().startsWith('http')) {
+      firstFrameSrc = firstFrameUrl.trim();
+      debugLog({ '===首帧使用URL': firstFrameSrc });
+    } else if (firstFrameAttach && Array.isArray(firstFrameAttach) && firstFrameAttach.length > 0) {
+      const img = firstFrameAttach[0];
+      if (img?.tmp_url && /\.(png|jpg|jpeg|webp)$/i.test(img.name || '')) {
+        try {
+          const imgRes = await context.fetch(img.tmp_url, { method: 'GET' });
+          const imgBuffer = await imgRes.arrayBuffer();
+          const base64 = Buffer.from(imgBuffer).toString('base64');
+          const ext = (img.name.match(/\.(png|jpg|jpeg|webp)$/i)?.[1] || 'png').toLowerCase();
+          const mimeMap: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+          firstFrameSrc = `data:${mimeMap[ext] || 'image/png'};base64,${base64}`;
+          debugLog({ '===首帧附件已转base64': img.name });
+        } catch (e) {
+          debugLog({ '===首帧附件下载失败': String(e) });
+        }
       }
     }
 
-    debugLog({ '===请求参数': { fullPrompt, content, hasImage: content.length > 1 } });
+    if (firstFrameSrc) {
+      content.push({
+        type: 'image_url',
+        image_url: { url: firstFrameSrc },
+        role: 'first_frame',
+      });
+    }
 
-    // 封装 fetch 函数
+    // 尾帧图片（仅支持URL输入）
+    if (lastFrameUrl && typeof lastFrameUrl === 'string' && lastFrameUrl.trim().startsWith('http')) {
+      content.push({
+        type: 'image_url',
+        image_url: { url: lastFrameUrl.trim() },
+        role: 'last_frame',
+      });
+      debugLog({ '===尾帧使用URL': lastFrameUrl.trim() });
+    }
+
+    // ========== 构建请求体（参数为顶层字段） ==========
+    const requestBody: any = {
+      model: 'ep-20260302170532-hndgm',
+      content: content,
+      duration: parseInt(duration?.value || '5', 10),
+      ratio: ratio?.value || '16:9',
+      watermark: false,
+    };
+
+    // 生成音频（默认开启）
+    requestBody.generate_audio = generateAudio?.value !== 'false';
+
+    debugLog({ '===请求体': { ...requestBody, content: `[${content.length} items]` } });
+
+    // fetch 封装
     const fetchApi = async <T = any>(url: string, init: any, authId?: string): Promise<T> => {
       try {
         const res = await context.fetch(url, init, authId);
         const resText = await res.text();
-        debugLog({
-          [`===fetch ${url}`]: {
-            status: res.status,
-            resText: resText.slice(0, 4000),
-          }
-        });
+        debugLog({ [`===fetch ${url}`]: { status: res.status, resText: resText.slice(0, 4000) } });
         return JSON.parse(resText);
       } catch (e) {
         debugLog({ [`===fetch error ${url}`]: String(e) });
@@ -251,22 +303,16 @@ basekit.addField({
     };
 
     try {
-      // ========== 第一步：创建视频生成任务 ==========
-      debugLog('===创建视频生成任务...');
+      // ========== 第一步：创建任务 ==========
       const createResult = await fetchApi<any>(
         'https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'ep-20260302170532-hndgm',
-            content: content,
-          }),
+          body: JSON.stringify(requestBody),
         },
         'ark_auth'
       );
-
-      debugLog({ '===创建任务结果': createResult });
 
       if (!createResult?.id) {
         return {
@@ -283,12 +329,12 @@ basekit.addField({
       const taskId = createResult.id;
 
       // ========== 第二步：轮询任务状态 ==========
-      debugLog(`===开始轮询任务状态, taskId: ${taskId}`);
+      debugLog(`===轮询开始, taskId: ${taskId}`);
       let attempts = 0;
-      const maxAttempts = 180; // 最多轮询180次，每次3秒，约9分钟
+      const maxAttempts = 60; // 5秒间隔 × 60次 = 5分钟
 
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
         attempts++;
 
         const getResult = await fetchApi<any>(
@@ -298,21 +344,14 @@ basekit.addField({
         );
 
         const status = getResult?.status;
-        debugLog({ [`===轮询第${attempts}次`]: { status, taskId } });
+        debugLog({ [`===轮询#${attempts}`]: status });
 
         if (status === 'succeeded') {
-          debugLog({ '===视频生成成功': getResult });
-
-          // 从返回结果中提取视频URL
-          // 实际响应格式: { content: { video_url: "https://..." }, resolution, duration, ... }
           let videoUrl = '';
-
           if (getResult.content) {
             if (typeof getResult.content === 'object' && !Array.isArray(getResult.content)) {
-              // content 是对象: { video_url: "..." }
               videoUrl = getResult.content.video_url || '';
             } else if (Array.isArray(getResult.content)) {
-              // 兜底：content 是数组的情况
               for (const item of getResult.content) {
                 if (item.video_url) {
                   videoUrl = typeof item.video_url === 'string' ? item.video_url : item.video_url.url || '';
@@ -321,28 +360,26 @@ basekit.addField({
               }
             }
           }
-
-          // 兜底：尝试从 output 字段提取
           if (!videoUrl && getResult.output) {
             videoUrl = getResult.output.video_url || getResult.output.url || '';
           }
 
-          const resolution = getResult.resolution || '';
-          const durationInfo = getResult.duration || '';
+          const res = getResult.resolution || '';
+          const dur = getResult.duration || '';
+          const rat = getResult.ratio || '';
 
           return {
             code: FieldCode.Success,
             data: {
               id: taskId,
-              videoUrl: videoUrl || '视频已生成，URL解析中，请查看任务详情',
-              status: `成功 ${resolution} ${durationInfo}s`.trim(),
+              videoUrl: videoUrl || '视频已生成，请查看任务详情',
+              status: `成功 ${res} ${rat} ${dur}s`.trim(),
               taskId: taskId,
             }
           };
         }
 
         if (status === 'failed') {
-          debugLog({ '===视频生成失败': getResult });
           const errorMsg = getResult?.error?.message || getResult?.error || '未知错误';
           return {
             code: FieldCode.Success,
@@ -354,28 +391,21 @@ basekit.addField({
             }
           };
         }
-
-        // 其他状态继续轮询（running, queued 等）
       }
 
-      // 超时
       return {
         code: FieldCode.Success,
         data: {
           id: taskId,
-          videoUrl: '生成超时（超过9分钟），请通过任务ID查询结果',
+          videoUrl: '生成超时，请通过任务ID查询结果',
           status: '超时',
           taskId: taskId,
         }
       };
 
     } catch (e) {
-      console.log('====Seedance error:', String(e));
       debugLog({ '===异常错误': String(e) });
-      return {
-        code: FieldCode.Error,
-        msg: '===Seedance异常: ' + String(e),
-      };
+      return { code: FieldCode.Error, msg: '===Seedance异常: ' + String(e) };
     }
   },
 });

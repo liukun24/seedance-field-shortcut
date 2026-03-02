@@ -1,8 +1,5 @@
 {
     "authorizations": [
-        {
-            "id": "ark_auth",
-            "value": "e730848e-ad16-4857-8b4c-e490a8fea310"
-        }
+        "e730848e-ad16-4857-8b4c-e490a8fea310"
     ]
 }
