@@ -8,6 +8,8 @@ basekit.addField({
   i18n: {
     messages: {
       'zh-CN': {
+        'endpointId': '模型端点 ID',
+        'endpointIdPlaceholder': '如 ep-xxxxxxxxxxxx-xxxxx',
         'prompt': '视频提示词',
         'firstFrameUrl': '首帧图片URL（可选）',
         'firstFrameUrlPlaceholder': '公开图片URL，如 https://example.com/first.png',
@@ -24,6 +26,8 @@ basekit.addField({
         'taskId': '任务ID',
       },
       'en-US': {
+        'endpointId': 'Model Endpoint ID',
+        'endpointIdPlaceholder': 'e.g. ep-xxxxxxxxxxxx-xxxxx',
         'prompt': 'Video Prompt',
         'firstFrameUrl': 'First Frame URL (Optional)',
         'firstFrameUrlPlaceholder': 'Public image URL, e.g. https://example.com/first.png',
@@ -40,6 +44,8 @@ basekit.addField({
         'taskId': 'Task ID',
       },
       'ja-JP': {
+        'endpointId': 'モデルエンドポイントID',
+        'endpointIdPlaceholder': '例: ep-xxxxxxxxxxxx-xxxxx',
         'prompt': '動画プロンプト',
         'firstFrameUrl': '最初フレームURL（任意）',
         'firstFrameUrlPlaceholder': '公開画像URL',
@@ -73,6 +79,14 @@ basekit.addField({
 
   // 定义捷径的入参
   formItems: [
+    {
+      key: 'endpointId',
+      label: t('endpointId'),
+      component: FieldComponent.Input,
+      props: { placeholder: t('endpointIdPlaceholder') },
+      tooltips: [{ type: 'text', content: '在火山引擎方舟控制台创建的推理接入点ID，如 ep-20260302170532-hndgm' }],
+      validator: { required: true }
+    },
     {
       key: 'prompt',
       label: t('prompt'),
@@ -188,6 +202,7 @@ basekit.addField({
 
   // 执行函数
   execute: async (formItemParams: {
+    endpointId: string;
     prompt: { type: string; text: string }[];
     firstFrameUrl: string;
     lastFrameUrl: string;
@@ -196,7 +211,7 @@ basekit.addField({
     duration: { label: string; value: string };
     generateAudio: { label: string; value: string };
   }, context) => {
-    const { prompt, firstFrameUrl, lastFrameUrl, firstFrameAttach, ratio, duration, generateAudio } = formItemParams;
+    const { endpointId, prompt, firstFrameUrl, lastFrameUrl, firstFrameAttach, ratio, duration, generateAudio } = formItemParams;
 
     function debugLog(arg: any, showContext = false) {
       if (!showContext) {
@@ -277,7 +292,7 @@ basekit.addField({
 
     // ========== 构建请求体（参数为顶层字段） ==========
     const requestBody: any = {
-      model: 'ep-20260302170532-hndgm',
+      model: endpointId?.trim() || 'ep-20260302170532-hndgm',
       content: content,
       duration: parseInt(duration?.value || '5', 10),
       ratio: ratio?.value || '16:9',
